@@ -1,0 +1,18 @@
+server:
+  port: 7001
+
+eureka:
+  client:
+    register-with-eureka: false
+    service-url:
+      defaultZone: http://eureka9003.com:9003/eureka/,http://eureka9002.com:9002/eureka/,http://eureka9001.com:9001/eureka/
+
+  instance:
+    instance-id: microservice-user10001     #自定义服务名称信息
+    prefer-ip-address: true                #访问路径可以显示IP地址
+
+info:
+  app.name: microservice-user10001
+  company.name: www.zhang.com
+  build.artifactId: ${project.artifactId}
+  build.version: ${project.version}

@@ -1,0 +1,41 @@
+server:
+  port: 8002
+
+mybatis:
+  config-location: "classpath:mybatis/mybatis.cfg.xml"  # mybatis配置文件所在路径
+  mapper-locations: "classpath:mybatis/mapper/**/*.xml" # mapper映射文件
+  type-aliases-package: com.common.entity               # 别名类所在包
+
+spring:
+  application:
+    name: microservice-provider          #微服务的名字
+  datasource:
+    driver-class-name: org.gjt.mm.mysql.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+    url: "jdbc:mysql://localhost:3306/study"
+    username: root
+    password: 123456
+    dbcp2:
+      initial-size: 5             # 初始化连接数
+      max-total: 5                # 最大连接数
+      max-wait-millis: 200        # 等待连接获取的最大超时时间
+      min-idle: 5                 # 数据库连接池的最小维持连接数
+
+eureka:
+  client:
+    service-url:
+      #defaultZone: http://localhost:9001/eureka
+      defaultZone: http://eureka9001.com:9001/eureka/,http://eureka9002.com:9002/eureka/,http://eureka9003.com:9003/eureka/
+      #defaultZone: http://localhost:9001/eureka,http://localhost:9003/eureka,http://localhost:9002/eureka
+  #    fetch-registry: false         #表示不向注册中心注册
+  #    register-with-eureka: false   #由于注册中心的职责就是维护服务实例，所以它不需要去检索服务
+
+  instance:
+    instance-id: microservice-provider8002     #自定义服务名称信息
+    prefer-ip-address: true                #访问路径可以显示IP地址
+
+info:
+  app.name: microservice-provider8002
+  company.name: www.zhang.com
+  build.artifactId: ${project.artifactId}
+  build.version: ${project.version}

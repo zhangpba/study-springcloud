@@ -1,0 +1,259 @@
+springCloud
+	一 建立一个总工程
+	二 建立公共微服务
+	三 建立生产者微服务
+	四 建立消费者微服务
+	五 建立注册微服务
+	六 建立eureka集群
+	七 Ribbon负载均衡
+	八 Feign负载均衡
+	九 Hystrix断路器
+	十 Zuul路由
+
+
+	一 建立一个总工程	microservice-parent
+		说明：总工程中并不做什么业务逻辑，总工程主要定义一个POM文件，将后续各个微服公用的一些jar包在总工程的pom中进行导入
+
+	二 建立公共微服务	microservice-com
+		说明：用于提供后续微服需要的公共的东西。创建好公共模块，其它微服务需要的话，不用再创建，直接引用该模块即可。
+
+	三 建立生产者微服务	microservice-provider
+		1、与建立microservice-com服务类似，建立一个microservice-provider微服务
+		2、该服务用于提供直接操作数据库user表。首先在pom中配置依赖的包，操作数据库需要的数据库驱动、数据源等。
+		3、在microservice-provider需要操作数据库，在application.yml中配置mybatis和数据源如下：
+		4、在src/main/resources目录下创建mybatis文件夹后新建mybatis.cfg.xml文件
+		5、创建Dao接口，用于操作user表的接口
+		6、在src/main/resources/mybatis目录下创建mapper目录，并在mapper目录下创建UserMapper.xml文件
+		7、创建UserService服务接口
+		8、创建UserServiceImpl接口的实现
+		9、创建Controller层，用于相应REST请求
+		10、创建microservice-provider的启动类
+		11、测试microservice-provider微服 启动microservice-provider服务，然后在浏览器中发送请求 http://localhost:8002/getUser/list
+		12、创建并配置完microservice-provider后，在microservice-parent的pom的文件中，module标签如下
+
+	四 建立消费者微服务	microservice-consumer
+		说明：	microservice-consumer服务用于请求microservice-provicer
+			创建与microservice-com类似，在microservice-parent下创建microservice-consumer微服。
+		1、pom配置
+		2、application.yml配置文件
+		3、配置RestTemplate的bean，RestTemplate用于模拟发送REST的客户端请求
+		4、配置controller层
+		5、创建启动类
+		6、测试 在浏览器中发送 http://localhost:8003/consumer/add?name=zhang&age=35
+
+	五 建立注册微服务	microservice-eurake1
+		说明：	eureka微服务用于注册和发现服务。
+			首先建立一个依赖于microservice-parent的microservice-eurake1工程，与上面建立方法一样。
+		1、pom文件配置
+		2、application.yml文件配置
+		3、创建启动类： 增加 @EnableEurekaServer
+		5、把microservice-provider微服务注册进microservice-eureka服务中
+			microservice-provider微服务中的pom文件加入eureka依赖
+			microservice-provider微服务中的application.yml文件中加入配置 eureka.client.service-url.defaultZone: http://localhost:9001/eureka
+			microservice-provider微服务中的启动类上加入 @EnableEurekaClient注解
+		6、测试：启动microservice-eureka1微服务，然后再启动microservice-provider微服务，在浏览器中请求 http://localhost:9001/
+		7、修改注册服务的主机名称
+			修改microservice-provider中的application.yml文件：eureka.instance.instance-id: microservice-provider8002
+		8、eureka中显示注册微服务的ip信息：当鼠标放在注册微服务的链接上，左下角显示注册微服务的ip信息
+			修改microservice-provider中的application.yml文件：eureka.instance.prefer-ip-address: true
+		9、点击注册微服务链接，显示微服务的info信息
+			首先在microservice-parent的pom中增加<build>的配置
+			然后再microservice-provider的服务中增加spring-boot-starter-actuator依赖
+			最后在microservice-provider中application.yml中配置显示的info信息
+			  info.app.name: microservice-provider
+			  info.company.name: www.lzj.com
+			  info.build.artifactId: $project.artifactId$
+			  info.build.version: $project.version$
+			重启microservice-eurake1和microservice-provider微服务，点击注册的微服务microservice-provider的链接
+		10、eureka的自我保护
+
+	六 建立eureka集群	microservice-eurake1,microservice-eurake2，microservice-eurake7
+		说明：	只是建立了一个eureka的微服务，如果当这个微服务down掉了，那么其它微服务就不能被注册和发现，整个系统就会down掉，
+			所以下面建立多个eureka微服务，配置eureka集群，需要注册的微服务要注册到所有的eureka的微服务中，
+			即注册到整个集群上，当一个eureka的微服务挂掉了，其它的eureka微服可以继续工作
+
+		1 首先修改hosts文件，添加127.0.0.1的多个域名映射，方便后面模拟根据多个地址进行注册服务
+			127.0.0.1	eureka9001.com
+			127.0.0.1	eureka9002.com
+			127.0.0.1	eureka9003.com
+		2 分别复制microservice-eurake1工程为microservice-eurake2和microservice-eurake3
+		3 修改pom 把microservice-eurake2服务中pom文件中的artifactId改为<artifactId>microservice-eurake2</artifactId>和 <artifactId>microservice-eurake3</artifactId>
+		4 该微服务同时注册到三个eureka微服务
+			修改application.yml修改为：	eureka.client.service-url.defaultZone: http://eureka9003.com:9003/eureka/,http://eureka9002.com:9002/eureka/
+							eureka.client.service-url.defaultZone: http://eureka9003.com:9003/eureka/,http://eureka9001.com:9001/eureka/
+							eureka.client.service-url.defaultZone: http://eureka9001.com:9001/eureka/,http://eureka9002.com:9002/eureka/
+		5 测试：运行microservice-eurake1、microservice-eurake2、microservice-eurake3、microservice-provider
+			从浏览器中访问eureka1的管理端 http://localhost:9001/
+
+	七 Ribbon负载均衡
+		1 microservice-consumer进行Ribbon配置
+			修改 pom文件：			增加Ribbon依赖
+			修改 application.yml文件：	增加eureka服务注册功能
+			修改 ConfigBean：		在RestTemplate上加 @LoadBanced注解					负载均衡实际是根据RestTemplate根据均衡算法进行调度不同地址上的同一个微服务的部署
+			修改 启动类：			增加 @EnableEurekaClient注解
+			修改 controller层：		不载通过"地址+端口号"调用其他微服务，而是根据微服务的名来调用应用	只是修改了private static String REST_URL_PREFIX = "http://microservice-provider";
+
+		2 为减小提供者微服务的压力，现在再部署两个提供者微服务：
+			复制 microservice-provider 工程，生成microservice-provider1 和 microservice-provider2
+			修改启动类：			修改microservice-provider2的启动类为ProviderApplication2，修改microservice-provider3的启动类为ProviderApplication3
+			修改application.yml文件：	修改端口号为：8003,8004;
+							修改eureka.instance.instance-id为：microservice-provider8003，microservice-provider8004
+			修改UserServiceImpl类中的getUser方法:增加日志输出，方便观察是哪一个微服务响应的请求
+
+		3 测试：启动3个eureka的微服务集群，然后启动3个上述的提供者微服务，最后启动消费者微服务microservice-consumer
+			分别从前端发起	http://localhost:7001/consumer/get/{id}
+			多次请求，就可以看出效果
+
+		4 轮询：
+			上面的3个微服务是随机响应的客户的请求，通过Ribbon的核心组件IRule定义查找消费端调用提供端服务的测略
+			修改microservice-consumer中的ConfigBean：增加轮询策略代码，然后按照上面的测试方法测试。
+
+	八 Feign负载均衡
+		说明：	前面在使用Ribbon+RestTemplate时，利用RestTemplate对http请求的封装处理，形成了一套模版化的调用方法。
+			但是在实际开发中，由于对服务依赖的调用可能不止一处，往往一个接口会被多处调用，所以通常都会针对每个
+			微服务自行封装一些客户端类来包装这些依赖服务的调用。所以，Feign在此基础上做了进一步封装，由他来帮助
+			我们定义和实现依赖服务接口的定义。在Feign的实现下，我们只需创建一个接口并使用注解的方式来配置它，即
+			可完成对服务提供方的接口绑定，简化了使用Spring cloud Ribbon时，自动封装服务调用客户端的开发量。
+
+		1 建立集成feign的消费端
+			复制 microservice-consumer 为microservice-consumer-feign
+			修改 启动类名字为FeignConsumerApplication
+			修改pom文件：增加对feign的依赖
+			创建ConsumerService接口：用于包装microservice-provider微服务，以后调用microservice-provider服务的方法，只需要调用接口中对应的方法即可
+			修改microservice-consumer-feign的Controller层：将新创建的接口注入，并调用方法
+
+		2 测试：启动3个erueka的微服务集群	microservice-eurake1、microservice-eurake2、microservice-eurake3
+			然后启动3个消费者微服务集群	microservice-provider、microservice-provider2、microservice-provider3
+			最后启动 microservice-consumer-feign微服务
+			从前端向消费者端发送请求	http://localhost:7001/consumer/get/2
+
+
+	九 Hystrix断路器
+		说明：	如果一个请求需要调起多个服务时，其中一个服务不通或失败，当大量请求发生时，会导致请求延时和资源浪费。
+			Hystrix是一个用于处理分布式系统的延迟和容错的开源库，在分布式系统里，许多依赖不可避免的会调用失败，
+			比如超时、异常等，Hystrix能够保证在一个依赖出问题的情况下，不会导致整体服务失败，避免级联故障，以提高分布式系统的弹性。
+
+			当某个服务单元发生故障之后，通过断路器的故障监控，向调用方返回一个符合预期的、可处理的备选响应（FallBack），
+			而不是长时间的等待或者抛出调用方无法处理的异常，这样就保证了服务调用方的线程不会被长时间、不必要地占用，
+			从而避免了故障在分布式系统中的蔓延，乃至雪崩。
+
+			Hystrix可用于服务熔断、服务降级、服务限流等作用。
+
+		1 服务熔断	当某个服务出现异常时，熔断该服务，快速返回指定的错误信息，当服务正常时，恢复熔断。
+			复制 microservice-provider 为 microservice-provider-hystrix
+			修改 microservice-provider-hystrix启动类
+			修改 pom文件：增加hystrix的依赖
+			修改 application.yml文件：修改server.port和eureka.instance.instance-id 为 8005和 microservice-provider-hystrix
+			修改 UserController：
+			修改启动类：增加注解 @EnableCircuitBreaker；增加异常出现调用的方法
+		2 服务熔断-测试：
+			启动3个eureka的微服务集群	microservice-eurake1、microservice-eurake2、microservice-eurake3
+			然后启动 microservice-provider-hystrix服务
+			然后启动 microservice-consumer-feign服务
+			从前端发送请求		http://localhost:7001/consumer/get/18	由于没有18，所以调用新写的异常处理方法
+
+		3 服务降级
+			说明：	在一个分布式系统中，当访问高峰期或资源有限时，需要关掉某个服务，若有请求访问该服务，不能因为系统服务关掉了，
+				就一直中断在该调用服务处，这时就需要请求返回指定的错误信息。
+
+				例如在分布式系统中有A、B两个服务，因为资源有限，需要关掉B服务，A服务在调用B服务时，没有调通，此时A返回指定
+				的错误信息，注意不是在B服务端返回的，是A客户端返回的错误信息。
+
+			复制 microservice-consumer-feign 服务 microservice-consumer-feign-hystrix
+			修改pom文件：增加hystrix依赖
+			新增 ConsumerServiceFallbackFactory类，		当调用ConsumerService中对应的方法失败后，自动调用ConsumerServiceFallbackFactory 中对应实现的ConsumerService方法，并在对应方法中定制调用服务失败后显示的错误信息
+				实现接口 FallbackFactory，
+				类上加 @Component
+				并传入 ConsumerService接口
+			修改ConsumerService的接口： @FeignClient中添加fallbackFactory属性
+			修改application.yml文件： 增加feign.hystrix.enabled=true
+		4 服务降级-测试
+			启动3个eureka的微服务集群	microservice-eurake1、microservice-eurake2、microservice-eurake3
+			然后启动 microservice-provider提供者服务
+			最后启动 microservice-consumer-feign-hystrix 消费者服务
+			从浏览器发送请求	http://localhost:7001/consumer/get/2
+
+			然后关掉 microservice-provider提供者服务
+			从浏览器发送请求	http://localhost:7001/consumer/get/2
+
+		5 服务监控
+			说明：	hystrix除了应用于上述的服务熔断和降级，还可以应用于服务的实时监控。Hystrix会持续地记录所有通过Hystrix发起
+				的请求的执行信息，并以统计报表和图形的形式展示给用户，包括每秒执行多少请求多少成功，多少失败等。Netflix通
+				过hystrix-metrics-event-stream项目实现了对以上指标的监控。Spring Cloud也提供了Hystrix Dashboard的整合，对监控内容转化成可视化界面
+			创建 microservice-consumer-hystrix-dashbord 微服务
+			增加 pom依赖
+			增加application.yml文件 server.port=7002
+			创建启动类：HystrixDashbordConsumerApplication：增加 @EnableHytrixDashboard
+		6 服务监控-测试
+			启动3个eureka的微服务集群	microservice-eurake1、microservice-eurake2、microservice-eurake3
+			然后启动 microservice-provider-hystrix 服务
+			最后启动刚创建监控服务的服务 microservice-consumer-hystrix-dashbord
+			浏览器输入：	http://localhost:7002/hystrix
+				填入：	http://localhost:8005/hystrix.stream		Delay:2000	Title:myDemo
+				填入完毕后，点击Monitor stream按钮，开启监控页面。从浏览器中连续的发送请求http://localhost:8005/get/1（不停的刷新即可）
+
+	十 Zuul路由
+		说明：
+			Zuul路由包含了对请求的路由和过滤两个功能。
+			路由：路由功能负责将外部请求转发到具体的微服务实例上，是实现外部访问统一入口；
+			过滤：过滤器功能则负责对请求的处理过程进行干预，是实现请求校验、服务聚合等功能的基础。
+			Zuul和Eureka进行整合，将Zuul自身注册为Eureka服务治理下的应用，同时从Eureka中获得其他微服务的消息，也即以后的访问微服务都是通过Zuul跳转后获得。Zuul服务最终也会注册进Eureka
+
+		1 路由配置
+			新建microservice-zuul微服务
+			增加 pom依赖
+			修改application.yml
+			修改hosts文件：增加127.0.0.1	zuul6001.com	用zuul6001.com表示微服务的域名
+			创建ZuulApplication启动类： @EnableZuulProxy
+		2 路由配置-测试
+			直接调用		http://localhost:8002/get/2
+			通过Zuul路由访问	http://zull6001.com:6001/microservice-provider/get/2
+
+		3 修改服务代理名称（不暴露服务名）
+			修改application.yml:	增加 zuul.routes.mydept.serviceId=microservice-provider 和 zuul.routes.mydept.path=/provider/**
+			通过代理名访问		http://zull6001.com:6001/provider/get/2
+
+		4 忽略带真实服务名的请求
+			修改application.yml；	增加 zuul.ignored-services=microservice-provider
+			不能访问		http://zull6001.com:6001/microservice-provider/get/2
+		5 设置访问前缀
+			修改application.yml	增加 zuul.prefix=/myDemo
+			通过带前缀的名称访问	http://zuul6001.com:6001/myDemo/provider/get/2
+
+	十一 Config配置
+	    说明：
+	        情景：一个分布式系统有可能包括非常多的微服务，每个微服务都有独自的配置文件，当系统变更时，有可能需要修改很多服务的配置文件，导致运维繁琐，容易出问题。
+	            所以需要一套集中式的、动态的配置管理设施。
+	        spring cloud提供的Config来解决这个问题。Config的Server端用来连接Github,Config的Client端通过Server端去Github请求相关的配置信息
+
+	    1 config服务端（与github建立通信）
+            1.1 在Github上建立一个respository,取名microservice-config,地址：https://github.com/shuniversity/microservice-config.git
+            1.2 把respository克隆到本地，将doc中的application.yml(内容有dev、test)文件push到仓库
+            1.3 新建microservice-config-server微服务
+                增加pom依赖
+                修改application.yml文件：增加github的连接：spring.cloud.server.git.url= https://github.com/shuniversity/microservice-config.git
+            1.4 在浏览器中：http://localhost:4001/application-test.yml
+
+        2 config客户端
+            2.1 复制microservice-consumer为microservice-config-client
+            2.2 将doc中的microservice-config-client.yml(dev、test的端口和eureka的配置信息)文件push到git仓库
+            2.3 新加bootstrap.yml文件，application.yml可配置可不配置
+            2.4 测试：
+			    启动3个eureka的微服务集群	microservice-eurake1、microservice-eurake2、microservice-eurake3
+			    然后启动microservice-provider服务
+			    接着启动microservice-config-server和microservice-config-client服务
+			    浏览器输入：	http://127.0.0.1:7003/consumer/get/2
+
+			结论：本地的yml文件都没有配置端口号和euraka集群信息，微服务microservice-config-client用到了github上面的microservice-config-client.yml文件的配置信息
+
+                上述微服务都启动后，microservice-config-client通过microservice-config-server微服务获取github上的microservice-config-clent.yml中的dev配置信息，
+                获取后的配置信息把microservice-config-client微服务的端口配置成了7003，
+                然后从浏览器中发送http://127.0.0.1:7003/consumer/get/2请求后，microservice-config-client微服务中的controller层截获请求后，
+                然后去eurake集群上去查找要调用的microservice-provider微服务，然后调用microservice-provider中的对应接口方法，接口方法中操作数据库。
+
+            * bootstrap.yml为系统级的配置文件，application.yml为用户级的配置文件，bootstrap.yml的优先级高，服务启动时优先加载。
+
+
+
+
+推荐网址：https://blog.csdn.net/u010502101/article/details/81989756

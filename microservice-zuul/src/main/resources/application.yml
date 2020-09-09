@@ -1,0 +1,28 @@
+server:
+  port: 6001
+
+spring:
+  application:
+    name: microservice-zuul
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka9003.com:9003/eureka/,http://eureka9002.com:9002/eureka/,http://eureka9001.com:9001/eureka/
+  instance:
+    instance-id: microservice-zuul6001     #自定义服务名称信息
+    prefer-ip-address: true                #访问路径可以显示IP地址
+
+zuul:
+  ignored-services: microservice-provider     # 忽略带真实服务名
+  prefix: /myDemo                             # 前缀：服务名前面加一个前缀
+  routes:
+    mydept.serviceId: microservice-provider
+    mydept.path: /provider/**                 # 别名
+
+
+info:                                         # 服务信息
+  app.name: microservice-zuul6001
+  company.name: www.zhang.com
+  build.artifactId: $project.artifactId$
+  build.version: $project.version$
